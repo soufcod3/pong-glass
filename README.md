@@ -21,7 +21,7 @@ npm run start
 Les touches claviers:
 
 * Flèche haute et bass : joueur droit
-* Z et S : jouer gauche.
+* Z et S : joueur gauche.
 
 Règle du jeu : ne laisser pas sortir la bille du terrain du jeu !
 
