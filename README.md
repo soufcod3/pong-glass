@@ -16,3 +16,12 @@ Sinon, on peut lancer en application natif avec Electron JS avec :
 npm run start
 ```
 
+## Comment jouer ?
+
+Les touches claviers:
+
+* Flèche haute et bass : joueur droit
+* Z et S : jouer gauche.
+
+Règle du jeu : ne laisser pas sortir la bille du terrain du jeu !
+
