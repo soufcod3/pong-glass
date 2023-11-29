@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <!--
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    -->
+    <link rel="stylesheet" href="./style.css">
+    <title>Hello World!</title>
+  </head>
+  <body>
+    <h1>Pong</h1>
+    <canvas id="pongcanvas" width="600" height="400" class="pongcontainer"></canvas>
+
+    <script type="module">
+      import { Pong } from './src/pong.js';
+
+      const canvas = document.getElementById('pongcanvas');
+      const game = new Pong(canvas);
+
+    </script>
+  </body>
+</html>
