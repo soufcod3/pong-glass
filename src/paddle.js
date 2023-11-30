@@ -7,11 +7,13 @@ export function Paddle(options) {
 
   this.speed = 0;
 
+  const unitsPerSecond = 250;
+
   addEventListener('keydown', (event) => {
     if (event.key === options.down) {
-      this.speed = 10;
+      this.speed = unitsPerSecond;
     } else if (event.key === options.up) {
-      this.speed = -10;
+      this.speed = -unitsPerSecond;
     }
   });
 
@@ -23,8 +25,8 @@ export function Paddle(options) {
     }
   })
   
-  this.update = () => {
-    this.position[1] = this.position[1] + this.speed;
+  this.update = (delta) => {
+    this.position[1] = this.position[1] + this.speed * delta;
     if (this.position[1] < 0) { this.position[1] = 0; }
     if (this.position[1] + this.height > options.height) { this.position[1] = options.height - this.height; }
 

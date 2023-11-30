@@ -4,7 +4,7 @@ export function Ball(options) {
 
   this.position = [50, 50]
   this.radius = 10;
-  this.speed = 3;
+  this.speed = 250;
 
   let dir = Vector2.normalize([1, 2]);
 
@@ -13,9 +13,9 @@ export function Ball(options) {
   }
 
 
-  this.update = () => {
+  this.update = (delta) => {
     
-    this.position = Vector2.add(this.position, Vector2.multiply(dir,this.speed));
+    this.position = Vector2.add(this.position, Vector2.multiply(dir,this.speed * delta));
 
     // Right paddle
     if (this.position[0] + this.radius > options.rightPaddle.position[0] && 

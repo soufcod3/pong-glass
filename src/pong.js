@@ -9,6 +9,7 @@ export function Pong(canvas) {
 
   const ctx = canvas.getContext("2d");
 
+  let lastTime = Date.now() / 1000.0;
   let text = undefined;
   let ball = undefined;
   
@@ -69,11 +70,15 @@ export function Pong(canvas) {
 
   // The animation loop
   function loop() {
+    const time = Date.now() / 1000.0;
+    let delta = time - lastTime;
+    lastTime = time;
+
     // First update the position of all the objects
-    paddleLeft.update();
-    paddleRight.update();
-    if (ball) { ball.update(); }
-    if (text) { text.update(); }
+    paddleLeft.update(delta);
+    paddleRight.update(delta);
+    if (ball) { ball.update(delta); }
+    if (text) { text.update(delta); }
 
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
