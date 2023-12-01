@@ -3,3 +3,6 @@
  * 
  * Par exemple, accès à la librairie `net` qui n'est pas disponible dans un navigateur.
  */
+
+const dgram = require('dgram');
+
