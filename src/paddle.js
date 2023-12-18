@@ -9,6 +9,19 @@ export function Paddle(options) {
 
   const unitsPerSecond = 250;
 
+  this.setSpeed = (speed) => {
+    console.log('SETTING SPEED', speed, this.position)
+    this.speed = speed
+  }
+
+  this.getPosition = () => {
+    return this.position
+  }
+
+  this.setPosition = (array) => {
+    this.position = array;
+  }
+
   addEventListener('keydown', (event) => {
     if (event.key === options.down) {
       this.speed = unitsPerSecond;
@@ -26,6 +39,7 @@ export function Paddle(options) {
   })
   
   this.update = (delta) => {
+    // console.log('this.pos', this.position)
     this.position[1] = this.position[1] + this.speed * delta;
     if (this.position[1] < 0) { this.position[1] = 0; }
     if (this.position[1] + this.height > options.height) { this.position[1] = options.height - this.height; }

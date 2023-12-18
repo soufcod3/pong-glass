@@ -22,6 +22,10 @@ export function Pong(canvas) {
   });
   paddleLeft.position[0] = 0;
 
+  this.getPaddleLeft = () => {
+    return paddleLeft
+  }
+
   // Right paddle
   const paddleRight = new Paddle({
     ctx,
@@ -30,6 +34,10 @@ export function Pong(canvas) {
     height: canvas.height
   });
   paddleRight.position[0] = 580;
+
+  this.getPaddleRight = () => {
+    return paddleRight
+  }
 
   // The ball
   function createBall() {

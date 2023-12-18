@@ -1,26 +1,190 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <!--
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     -->
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="/style.css" />
     <title>Pong !</title>
   </head>
   <body>
     <h1>Template Pong</h1>
-    <canvas id="pongcanvas" width="600" height="400" class="pongcontainer"></canvas>
+    <canvas
+      id="pongcanvas"
+      width="600"
+      height="400"
+      class="pongcontainer"
+    ></canvas>
 
     <p>Joueur de gauche : Z et S</p>
     <p>Joueur de droite : &uarr; et &darr;</p>
-    <script type="module">
-      import { Pong } from './src/pong.js';
+    <ul>
+      <li>Joueur 1 : <span id="player1">...</span></li>
+      <li>Joueur 2 : <span id="player2">...</span></li>
+    </ul>
 
-      const canvas = document.getElementById('pongcanvas');
+    <button id="btnCreate">New Game</button>
+    <button id="btnJoin">Join</button>
+    <input type="text" id="inputGameId" />
+    <script type="module">
+      import { Pong } from "./src/pong.js";
+
+      const canvas = document.getElementById("pongcanvas");
       const game = new Pong(canvas);
 
+      ///////
+      let clientId = null;
+      let gameId = null;
+      let loggedClients = [];
+      let gameState = {};
+
+      let ws = new WebSocket("ws://localhost:9090");
+
+      // CREATE EVENT
+      const btnCreate = document.getElementById("btnCreate");
+      btnCreate.addEventListener("click", (e) => {
+        const payload = {
+          method: "CREATE",
+          clientId: clientId,
+          leftX: paddleLeft.getPosition()[0],
+          leftY: paddleLeft.getPosition()[1],
+          rightX: paddleRight.getPosition()[0],
+          rightY: paddleRight.getPosition()[1],
+        };
+
+        console.log("sent payload", payload);
+        ws.send(JSON.stringify(payload));
+      });
+
+      // JOIN EVENT
+      const btnJoin = document.getElementById("btnJoin");
+      const inputGameId = document.getElementById("inputGameId");
+      btnJoin.addEventListener("click", () => {
+        if (!gameId) {
+          gameId = inputGameId.value;
+        }
+
+        const payload = {
+          method: "JOIN",
+          clientId: clientId,
+          gameId: gameId,
+          leftX: paddleLeft.getPosition()[0],
+          leftY: paddleLeft.getPosition()[1],
+          rightX: paddleRight.getPosition()[0],
+          rightY: paddleRight.getPosition()[1],
+        };
+
+        ws.send(JSON.stringify(payload));
+      });
+
+      const paddleLeft = game.getPaddleLeft();
+      const paddleRight = game.getPaddleRight();
+
+      addEventListener("keydown", (e) => {
+        if (
+          clientId === loggedClients[0] &&
+          (e.key === "z" || e.key === "s")
+        ) {
+          console.log('Client 1')
+          gameState.leftX = paddleLeft.getPosition()[0];
+          gameState.leftY = paddleLeft.getPosition()[1];
+          const payload = {
+            method: "ACTION",
+            gameState: gameState
+          };
+          ws.send(JSON.stringify(payload));
+        } else if (
+          clientId === loggedClients[1] &&
+          (e.key === "ArrowUp" || e.key === "ArrowDown")
+        ) {
+          console.log('Client 2')
+          gameState.rightX = paddleRight.getPosition()[0];
+          gameState.rightY = paddleRight.getPosition()[1];
+          const payload = {
+            method: "ACTION",
+            gameState: gameState
+          };
+          ws.send(JSON.stringify(payload));
+        }
+      });
+
+      addEventListener("keyup", (e) => {
+        if (
+          clientId === loggedClients[0] &&
+          (e.key === "z" || e.key === "s")
+        ) {
+          gameState.leftX = paddleLeft.getPosition()[0];
+          gameState.leftY = paddleLeft.getPosition()[1];
+          const payload = {
+            method: "ACTION",
+            gameState: gameState
+          };
+          ws.send(JSON.stringify(payload));
+        } else if (
+          clientId === loggedClients[1] &&
+          (e.key === "ArrowUp" || e.key === "ArrowDown")
+        ) {
+          gameState.rightX = paddleRight.getPosition()[0];
+          gameState.rightY = paddleRight.getPosition()[1];
+          const payload = {
+            method: "ACTION",
+            gameState: gameState
+          };
+          ws.send(JSON.stringify(payload));
+        }
+      });
+
+      ws.onmessage = (message) => {
+        // message.data
+        const response = JSON.parse(message.data);
+        console.log("response", response);
+
+        // Manage Connect method
+        if (response.method === "CONNECT") {
+          clientId = response.clientId;
+          console.log("client id set successfully", clientId);
+        }
+
+        if (response.method === "CREATE") {
+          gameState = response.gameState
+          gameId = gameState.id;
+          const firstPlayer = gameState.clients[0];
+          document.getElementById("player1").innerHTML = firstPlayer;
+          loggedClients.push(firstPlayer);
+
+          // initialize paddles position
+          paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
+          paddleRight.setPosition([gameState.rightX, gameState.rightY]);
+          console.log("new game", response.gameState);
+        }
+
+        if (response.method === "JOIN") {
+          gameState = response.gameState
+          gameId = gameState.id;
+          const clients = gameState.clients;
+
+          paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
+          paddleRight.setPosition([gameState.rightX, gameState.rightY]);
+
+          clients.forEach((c, key) => {
+            // update clients list
+            document.getElementById(`player${key + 1}`).innerHTML = c;
+            loggedClients[key] = c;
+          });
+
+          inputGameId.value = "";
+
+          console.log("gameState", gameState);
+        }
+
+        if (response.method === "ACTION") {
+          gameState = response.gameState
+          paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
+          paddleRight.setPosition([gameState.rightX, gameState.rightY]);
+        }
+      };
     </script>
   </body>
 </html>
