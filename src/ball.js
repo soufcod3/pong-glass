@@ -16,7 +16,7 @@ export function Ball(options) {
   this.update = (delta) => {
     
     this.position = Vector2.add(this.position, Vector2.multiply(dir,this.speed * delta));
-
+    
     // Right paddle
     if (this.position[0] + this.radius > options.rightPaddle.position[0] && 
         this.position[1] >= options.rightPaddle.position[1] &&

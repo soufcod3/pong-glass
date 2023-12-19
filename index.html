@@ -38,9 +38,20 @@
       let clientId = null;
       let gameId = null;
       let loggedClients = [];
-      let gameState = {};
 
-      let ws = new WebSocket("ws://localhost:9090");
+      const paddleLeft = game.getPaddleLeft();
+      const paddleRight = game.getPaddleRight();
+
+      let gameState = {
+        leftX: paddleLeft.getPosition()[0],
+        leftY: paddleLeft.getPosition()[1],
+        rightX: paddleRight.getPosition()[0],
+        rightY: paddleRight.getPosition()[1],
+        leftSpeed: 0,
+        rightSpeed: 0,
+      };
+
+      const ws = new WebSocket("ws://localhost:9090");
 
       // CREATE EVENT
       const btnCreate = document.getElementById("btnCreate");
@@ -48,12 +59,8 @@
         const payload = {
           method: "CREATE",
           clientId: clientId,
-          leftX: paddleLeft.getPosition()[0],
-          leftY: paddleLeft.getPosition()[1],
-          rightX: paddleRight.getPosition()[0],
-          rightY: paddleRight.getPosition()[1],
+          gameState: gameState,
         };
-
         console.log("sent payload", payload);
         ws.send(JSON.stringify(payload));
       });
@@ -69,68 +76,84 @@
         const payload = {
           method: "JOIN",
           clientId: clientId,
-          gameId: gameId,
-          leftX: paddleLeft.getPosition()[0],
-          leftY: paddleLeft.getPosition()[1],
-          rightX: paddleRight.getPosition()[0],
-          rightY: paddleRight.getPosition()[1],
+          gameState: { ...gameState, id: gameId },
         };
 
         ws.send(JSON.stringify(payload));
       });
 
-      const paddleLeft = game.getPaddleLeft();
-      const paddleRight = game.getPaddleRight();
-
       addEventListener("keydown", (e) => {
-        if (
-          clientId === loggedClients[0] &&
-          (e.key === "z" || e.key === "s")
-        ) {
-          console.log('Client 1')
-          gameState.leftX = paddleLeft.getPosition()[0];
-          gameState.leftY = paddleLeft.getPosition()[1];
-          const payload = {
-            method: "ACTION",
-            gameState: gameState
-          };
-          ws.send(JSON.stringify(payload));
-        } else if (
-          clientId === loggedClients[1] &&
-          (e.key === "ArrowUp" || e.key === "ArrowDown")
-        ) {
-          console.log('Client 2')
-          gameState.rightX = paddleRight.getPosition()[0];
-          gameState.rightY = paddleRight.getPosition()[1];
-          const payload = {
-            method: "ACTION",
-            gameState: gameState
-          };
-          ws.send(JSON.stringify(payload));
+        // CLIENT 1
+        if (clientId === loggedClients[0]) {
+          if (e.key === "z") {
+            paddleLeft.setSpeed(-250);
+            gameState.leftSpeed = -250;
+            gameState.leftX = paddleLeft.getPosition()[0];
+            gameState.leftY = paddleLeft.getPosition()[1];
+
+            const payload = {
+              method: "ACTION",
+              gameState: gameState,
+            };
+            console.log("gameState payload sent", payload);
+            ws.send(JSON.stringify(payload));
+          } else if (e.key === "s") {
+            paddleLeft.setSpeed(250);
+            gameState.leftSpeed = 250;
+            gameState.leftX = paddleLeft.getPosition()[0];
+            gameState.leftY = paddleLeft.getPosition()[1];
+            const payload = {
+              method: "ACTION",
+              gameState: gameState,
+            };
+            console.log("gameState payload sent", payload);
+            ws.send(JSON.stringify(payload));
+          }
+          // CLIENT 2
+        } else if (clientId === loggedClients[1]) {
+          if (e.key === "ArrowUp") {
+            paddleRight.setSpeed(-250);
+            gameState.rightSpeed = -250;
+            gameState.rightX = paddleRight.getPosition()[0];
+            gameState.rightY = paddleRight.getPosition()[1];
+            const payload = {
+              method: "ACTION",
+              gameState: gameState,
+            };
+            ws.send(JSON.stringify(payload));
+          } else if (e.key === "ArrowDown") {
+            paddleRight.setSpeed(250);
+            gameState.rightSpeed = 250;
+            gameState.rightX = paddleRight.getPosition()[0];
+            gameState.rightY = paddleRight.getPosition()[1];
+            const payload = {
+              method: "ACTION",
+              gameState: gameState,
+            };
+            ws.send(JSON.stringify(payload));
+          }
         }
       });
 
       addEventListener("keyup", (e) => {
-        if (
-          clientId === loggedClients[0] &&
-          (e.key === "z" || e.key === "s")
-        ) {
+        if (clientId === loggedClients[0]) {
+          paddleLeft.setSpeed(0);
+          gameState.leftSpeed = 0;
           gameState.leftX = paddleLeft.getPosition()[0];
           gameState.leftY = paddleLeft.getPosition()[1];
           const payload = {
             method: "ACTION",
-            gameState: gameState
+            gameState: gameState,
           };
           ws.send(JSON.stringify(payload));
-        } else if (
-          clientId === loggedClients[1] &&
-          (e.key === "ArrowUp" || e.key === "ArrowDown")
-        ) {
+        } else if (clientId === loggedClients[1]) {
+          paddleRight.setSpeed(0);
+          gameState.rightSpeed = 0;
           gameState.rightX = paddleRight.getPosition()[0];
           gameState.rightY = paddleRight.getPosition()[1];
           const payload = {
             method: "ACTION",
-            gameState: gameState
+            gameState: gameState,
           };
           ws.send(JSON.stringify(payload));
         }
@@ -139,17 +162,19 @@
       ws.onmessage = (message) => {
         // message.data
         const response = JSON.parse(message.data);
-        console.log("response", response);
 
         // Manage Connect method
         if (response.method === "CONNECT") {
           clientId = response.clientId;
+          game.setClientId(clientId);
           console.log("client id set successfully", clientId);
         }
 
         if (response.method === "CREATE") {
-          gameState = response.gameState
+          gameState = response.gameState;
           gameId = gameState.id;
+          game.setGameId(gameId);
+
           const firstPlayer = gameState.clients[0];
           document.getElementById("player1").innerHTML = firstPlayer;
           loggedClients.push(firstPlayer);
@@ -157,12 +182,15 @@
           // initialize paddles position
           paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
           paddleRight.setPosition([gameState.rightX, gameState.rightY]);
-          console.log("new game", response.gameState);
+          console.log("new game id", response.gameState.id);
         }
 
         if (response.method === "JOIN") {
-          gameState = response.gameState
+          gameState = response.gameState;
           gameId = gameState.id;
+          game.setGameId(gameId);
+          game.setWebsocket(ws);
+
           const clients = gameState.clients;
 
           paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
@@ -174,15 +202,18 @@
             loggedClients[key] = c;
           });
 
-          inputGameId.value = "";
+          game.setLoggedClients(loggedClients);
 
-          console.log("gameState", gameState);
+          inputGameId.value = "";
         }
 
         if (response.method === "ACTION") {
-          gameState = response.gameState
+          console.log('ACTION : gameState received', response.gameState)
+          gameState = response.gameState;
           paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
           paddleRight.setPosition([gameState.rightX, gameState.rightY]);
+          paddleLeft.setSpeed(gameState.leftSpeed);
+          paddleRight.setSpeed(gameState.rightSpeed);
         }
       };
     </script>

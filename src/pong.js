@@ -12,6 +12,28 @@ export function Pong(canvas) {
   let lastTime = Date.now() / 1000.0;
   let text = undefined;
   let ball = undefined;
+  let gameId = undefined
+  let clientId = undefined
+  let loggedClients = {}
+
+  this.setGameId =  (id) => {
+    gameId = id
+  }
+
+  this.setClientId = (id) => {
+    clientId = id
+  }
+
+  this.setLoggedClients = (clients) => {
+    loggedClients = clients
+  }
+
+  let websocket = undefined;
+
+  this.setWebsocket = (ws) => {
+    websocket = ws
+  }
+
   
   // Left paddle
   const paddleLeft = new Paddle({
@@ -62,9 +84,7 @@ export function Pong(canvas) {
       }
     });
     ball.position = [ canvas.width / 2.0, canvas.height / 2.0 ];
-  
   }
-
   
   function endGame() {
     setTimeout(
@@ -100,7 +120,53 @@ export function Pong(canvas) {
 
     // Program the next animation frame
     requestAnimationFrame(loop);
+
+    // ball position packet sending
+    const payload = {
+      method: 'BALL',
+      clientId: clientId,
+      gameId: gameId,
+      position: ball ? ball.position : null
+    }
+
+    if (websocket) {
+      console.log(websocket)
+      if (gameId && loggedClients[0] === clientId) {
+        sendWs(JSON.stringify(payload))
+      }
+      websocket.onmessage = (message) => {
+        const response = JSON.parse(message.data);
+        if (response.method === 'BALL') {
+          if (response.position && ball) {
+              // console.log('setting ball position', response.position)
+            ball.position = response.position
+          }
+        }
+      }
+    }
+
+    
   }
+
+  function sendWs (message, callback) {
+    waitForConnection(function () {
+        websocket.send(message);
+        if (typeof callback !== 'undefined') {
+          callback();
+        }
+    }, 500);
+  };
+
+  function waitForConnection (callback, interval) {
+    if (websocket && websocket.readyState === 1) {
+        callback();
+    } else {
+        // optional: implement backoff for interval here
+        setTimeout(function () {
+            waitForConnection(callback, interval);
+        }, interval);
+    }
+  };
 
   createBall();
 
