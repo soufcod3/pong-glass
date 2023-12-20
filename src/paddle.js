@@ -10,8 +10,11 @@ export function Paddle(options) {
   const unitsPerSecond = 250;
 
   this.setSpeed = (speed) => {
-    console.log('SETTING SPEED', speed, this.position)
     this.speed = speed
+  }
+
+  this.getSpeed = () => {
+    return this.speed
   }
 
   this.getPosition = () => {

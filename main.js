@@ -18,7 +18,8 @@ const wsServer = new websocketServer({
 });
 
 // clients hashmap
-const clients = {};
+let player1 = null;
+let player2 = null;
 const gameStates = {};
 
 wsServer.on("request", (request) => {
@@ -34,13 +35,14 @@ wsServer.on("request", (request) => {
 
     // CREATE method
     if (result.method === "CREATE") {
-      const clientId = result.clientId;
+      const player1Id = result.player1;
 
       const gameId = uuid.v4();
+
       gameStates[gameId] = {
         ...result.gameState,
         id: gameId,
-        clients: [clientId],
+        players: [player1Id],
       };
 
       const payload = {
@@ -48,84 +50,99 @@ wsServer.on("request", (request) => {
         gameState: gameStates[gameId],
       };
 
-      console.log('clients', clients, clientId)
-      const con = clients[clientId].connection;
-      con.send(JSON.stringify(payload));
+      console.log('player1', player1)
+      console.log('player2', player2)
+      player1.connection.send(JSON.stringify(payload));
     }
 
     // JOIN method
     if (result.method === "JOIN") {
-      const clientId = result.clientId;
+      const player2Id = result.playerId;
       const gameId = result.gameState.id;
-      console.log("GAME ID", gameId);
       const gameState = gameStates[gameId];
 
-      if (gameState.clients.length > 2) {
+      if (gameState.players.length > 2) {
         // sorry max players reach
         return;
       }
-      gameState.clients.push(clientId);
+
+      gameState.players.push(player2Id);
 
       const payload = {
         method: "JOIN",
         gameState: gameState,
       };
 
-      gameState.clients.forEach((clientId) => {
-        clients[clientId].connection.send(JSON.stringify(payload));
-      });
+      player1.connection.send(JSON.stringify(payload))
+      player2.connection.send(JSON.stringify(payload))
     }
 
-    // ACTION method
-    if (result.method === "ACTION") {
-      console.log('ACTION !!!!', result.gameState)
+    if (result.method === "PADDLE_LEFT") {
       const gameState = result.gameState;
       gameStates[gameState.id] = gameState;
-      
+
       const payload = {
-        method: "ACTION",
+        method: "PADDLE_LEFT",
         gameState: gameStates[gameState.id],
       };
 
-      gameState.clients.forEach((clientId) => {
-        clients[clientId].connection.send(JSON.stringify(payload));
-      });
-      console.log("sending game state to", gameState.clients);
+      // only send to player2
+      player2.connection.send(JSON.stringify(payload));
+    }
 
+    // GAME_STATE
+    if (result.method === "GAME_STATE") {
+        const gameState = result.gameState;
+        gameStates[gameState.id] = gameState;
+
+        const payload = {
+          method: "GAME_STATE",
+          gameState: gameStates[gameState.id],
+        };
+
+        player1.connection.send(JSON.stringify(payload))
+        player2.connection.send(JSON.stringify(payload))
     }
 
     // BALL method
     if (result.method === "BALL") {
-        
-      const gameId = result.gameId
-      const gameState = gameStates[gameId]
+      const gameId = result.gameId;
+      const gameState = gameStates[gameId];
       const position = result.position;
 
       const payload = {
         method: "BALL",
-        position
+        position,
       };
 
       if (gameState) {
         gameState.clients.forEach((clientId) => {
-            clients[clientId].connection.send(JSON.stringify(payload));
-          });
+          connections[clientId].connection.send(JSON.stringify(payload));
+        });
       }
     }
   });
 
-  // generate a new clientId
-  const clientId = uuid.v4();
-  clients[clientId] = {
-    connection: connection,
-  };
+  // generate a new playerId
+  const playerId = uuid.v4();
+
+  if (!player1) {
+    player1 = { id: playerId, connection }
+    player2 = null
+  } else if (player1 && !player2) {
+    player2 = { id: playerId, connection }
+  } else if (player1 && player2) {
+    player1 = { id: playerId, connection }
+    player2 = null
+  }
 
   const payload = {
     method: "CONNECT",
-    clientId: clientId,
+    playerId: playerId,
   };
 
-  console.log('NEW CONNECTION')
+  console.log('player1', player1)
+  console.log('player2', player2)
 
   // send back the client connect
   connection.send(JSON.stringify(payload));

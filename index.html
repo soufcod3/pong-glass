@@ -35,187 +35,164 @@
       const game = new Pong(canvas);
 
       ///////
-      let clientId = null;
+      let playerId = null;
       let gameId = null;
-      let loggedClients = [];
+      let players = [];
 
       const paddleLeft = game.getPaddleLeft();
       const paddleRight = game.getPaddleRight();
 
       let gameState = {
-        leftX: paddleLeft.getPosition()[0],
-        leftY: paddleLeft.getPosition()[1],
-        rightX: paddleRight.getPosition()[0],
-        rightY: paddleRight.getPosition()[1],
+        leftX: 0,
+        leftY: 0,
+        rightX: 580,
+        rightY: 0,
         leftSpeed: 0,
         rightSpeed: 0,
+        ballX: 300,
+        ballY: 200,
       };
 
+      // STEP#1 player 1 & player 2 : Creating a connection
       const ws = new WebSocket("ws://localhost:9090");
 
-      // CREATE EVENT
+      // STEP#3 player 1 : Creates the game
       const btnCreate = document.getElementById("btnCreate");
       btnCreate.addEventListener("click", (e) => {
         const payload = {
           method: "CREATE",
-          clientId: clientId,
+          player1: playerId,
           gameState: gameState,
         };
-        console.log("sent payload", payload);
-        ws.send(JSON.stringify(payload));
+        if (players.length === 1) {
+          // Only if there is only main player
+          ws.send(JSON.stringify(payload));
+        }
       });
 
-      // JOIN EVENT
+      // STEP#5 player 2 : Joins the game, adds game id to gameState
       const btnJoin = document.getElementById("btnJoin");
       const inputGameId = document.getElementById("inputGameId");
       btnJoin.addEventListener("click", () => {
-        if (!gameId) {
-          gameId = inputGameId.value;
-        }
-
+        gameId = inputGameId.value;
         const payload = {
           method: "JOIN",
-          clientId: clientId,
+          playerId: playerId,
           gameState: { ...gameState, id: gameId },
         };
 
         ws.send(JSON.stringify(payload));
       });
 
+      // STEP#7 player 1 updating paddle left
       addEventListener("keydown", (e) => {
-        // CLIENT 1
-        if (clientId === loggedClients[0]) {
+        if (playerId === players[0]) {
           if (e.key === "z") {
             paddleLeft.setSpeed(-250);
-            gameState.leftSpeed = -250;
-            gameState.leftX = paddleLeft.getPosition()[0];
-            gameState.leftY = paddleLeft.getPosition()[1];
-
-            const payload = {
-              method: "ACTION",
-              gameState: gameState,
-            };
-            console.log("gameState payload sent", payload);
-            ws.send(JSON.stringify(payload));
           } else if (e.key === "s") {
             paddleLeft.setSpeed(250);
-            gameState.leftSpeed = 250;
-            gameState.leftX = paddleLeft.getPosition()[0];
-            gameState.leftY = paddleLeft.getPosition()[1];
-            const payload = {
-              method: "ACTION",
-              gameState: gameState,
-            };
-            console.log("gameState payload sent", payload);
-            ws.send(JSON.stringify(payload));
-          }
-          // CLIENT 2
-        } else if (clientId === loggedClients[1]) {
-          if (e.key === "ArrowUp") {
-            paddleRight.setSpeed(-250);
-            gameState.rightSpeed = -250;
-            gameState.rightX = paddleRight.getPosition()[0];
-            gameState.rightY = paddleRight.getPosition()[1];
-            const payload = {
-              method: "ACTION",
-              gameState: gameState,
-            };
-            ws.send(JSON.stringify(payload));
-          } else if (e.key === "ArrowDown") {
-            paddleRight.setSpeed(250);
-            gameState.rightSpeed = 250;
-            gameState.rightX = paddleRight.getPosition()[0];
-            gameState.rightY = paddleRight.getPosition()[1];
-            const payload = {
-              method: "ACTION",
-              gameState: gameState,
-            };
-            ws.send(JSON.stringify(payload));
           }
         }
       });
 
+      // STEP#9 sending new paddle left pos and speed
       addEventListener("keyup", (e) => {
-        if (clientId === loggedClients[0]) {
+        if (playerId === players[0]) {
           paddleLeft.setSpeed(0);
-          gameState.leftSpeed = 0;
-          gameState.leftX = paddleLeft.getPosition()[0];
-          gameState.leftY = paddleLeft.getPosition()[1];
-          const payload = {
-            method: "ACTION",
-            gameState: gameState,
-          };
-          ws.send(JSON.stringify(payload));
-        } else if (clientId === loggedClients[1]) {
-          paddleRight.setSpeed(0);
-          gameState.rightSpeed = 0;
-          gameState.rightX = paddleRight.getPosition()[0];
-          gameState.rightY = paddleRight.getPosition()[1];
-          const payload = {
-            method: "ACTION",
-            gameState: gameState,
-          };
-          ws.send(JSON.stringify(payload));
         }
       });
 
       ws.onmessage = (message) => {
-        // message.data
         const response = JSON.parse(message.data);
 
-        // Manage Connect method
+        // STEP#2 player 1 & player 2 :  Receiving player id.
         if (response.method === "CONNECT") {
-          clientId = response.clientId;
-          game.setClientId(clientId);
-          console.log("client id set successfully", clientId);
+          playerId = response.playerId;
+          players.push(playerId);
+          console.log("player id", playerId);
         }
 
+        // STEP#4 player 1 : stores new gameState with players (only 1 for now) and game id
         if (response.method === "CREATE") {
           gameState = response.gameState;
           gameId = gameState.id;
-          game.setGameId(gameId);
 
-          const firstPlayer = gameState.clients[0];
-          document.getElementById("player1").innerHTML = firstPlayer;
-          loggedClients.push(firstPlayer);
+          const player1 = gameState.players[0];
+          document.getElementById("player1").innerHTML = player1;
+          players.push(player1);
 
-          // initialize paddles position
-          paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
-          paddleRight.setPosition([gameState.rightX, gameState.rightY]);
           console.log("new game id", response.gameState.id);
         }
 
+        // STEP#6 player 2 : stores players array and game id
         if (response.method === "JOIN") {
           gameState = response.gameState;
           gameId = gameState.id;
-          game.setGameId(gameId);
-          game.setWebsocket(ws);
 
-          const clients = gameState.clients;
+          players = gameState.players;
+
+          console.log("JOIN", response);
 
           paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
           paddleRight.setPosition([gameState.rightX, gameState.rightY]);
 
-          clients.forEach((c, key) => {
-            // update clients list
-            document.getElementById(`player${key + 1}`).innerHTML = c;
-            loggedClients[key] = c;
+          players.forEach((p, key) => {
+            // DOM ul update
+            document.getElementById(`player${key + 1}`).innerHTML = p;
+            players[key] = p;
           });
-
-          game.setLoggedClients(loggedClients);
-
           inputGameId.value = "";
+
+          if (playerId === players[0]) {
+            setInterval(() => {
+              const payload = {
+                method: "GAME_STATE",
+                gameId,
+                gameState: {
+                  ...gameState,
+                  leftSpeed: paddleLeft.getSpeed(),
+                  rightSpeed: paddleRight.getSpeed(),
+                  leftY: paddleLeft.getPosition()[1],
+                  rightY: paddleRight.getPosition()[1],
+                  ball: game.getBall()?.position,
+                },
+              };
+              ws.send(JSON.stringify(payload));
+            }, 1);
+          }
+          // if player 2 send paddleright speed and y
         }
 
-        if (response.method === "ACTION") {
-          console.log('ACTION : gameState received', response.gameState)
-          gameState = response.gameState;
-          paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
-          paddleRight.setPosition([gameState.rightX, gameState.rightY]);
-          paddleLeft.setSpeed(gameState.leftSpeed);
-          paddleRight.setSpeed(gameState.rightSpeed);
+        if (response.method === "GAME_STATE") {
+          const isPlayer2 = players[1] === playerId;
+          if (isPlayer2) {
+            gameState = response.gameState;
+            updateGame(gameState);
+          }
+        }
+
+        if (response.method === "PADDLE_RIGHT") {
+          const isPlayer1 = players[0] === playerId;
+          if (isPlayer1) {
+            updatePaddleRight(response.speedRight, response.rightY);
+          }
         }
       };
+
+      function updateGame(gameState) {
+        paddleLeft.setSpeed(gameState.leftSpeed);
+        paddleLeft.setPosition([gameState.leftX, gameState.leftY]);
+        // paddleRight.setSpeed(gameState.rightSpeed)
+        // paddleRight.setPosition([gameState.rightX, gameState.rightY])
+        if (game.getBall()) {
+          game.setBallPosition(gameState.ball || [300, 0]);
+        }
+      }
+
+      function updatePaddleRight(speedRight, rightY) {
+        paddleRight.setSpeed(speedRight);
+        paddleRight.setPosition([gameState.rightX, rightY]);
+      }
     </script>
   </body>
 </html>
